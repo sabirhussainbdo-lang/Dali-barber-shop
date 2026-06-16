@@ -1,0 +1,452 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Space Exploration Dashboard</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-20px); }
+            100% { transform: translateY(0px); }
+        }
+        .float {
+            animation: float 6s ease-in-out infinite;
+        }
+        .gradient-text {
+            background: linear-gradient(45deg, #6366f1, #a855f7);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .card {
+            background: rgba(30, 41, 59, 0.8);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(148, 163, 184, 0.1);
+            transition: all 0.3s ease;
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 4px 20px rgba(148, 163, 184, 0.1);
+        }
+        .earth-card {
+            background: rgba(30, 41, 59, 0.95);
+        }
+        body {
+            background: linear-gradient(to bottom, #0f172a, #1e293b);
+            min-height: 100vh;
+        }
+        .iss-map {
+            background-image: url('data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" width="800" height="400" viewBox="0 0 800 400"><rect width="800" height="400" fill="%23242938"/><path d="M0 0h800v400H0z" fill="none" stroke="%23334155" stroke-width="0.5"/></svg>');
+            background-size: cover;
+        }
+        .neo-danger-low { background: rgba(34, 197, 94, 0.2); }
+        .neo-danger-medium { background: rgba(234, 179, 8, 0.2); }
+        .neo-danger-high { background: rgba(239, 68, 68, 0.2); }
+    </style>
+</head>
+<body class="text-white min-h-screen">
+    <!-- Header -->
+    <header class="p-6 border-b border-gray-800/50">
+        <div class="container mx-auto flex justify-between items-center">
+            <h1 class="text-4xl font-bold gradient-text tracking-tight">Space Explorer</h1>
+            <div class="text-lg font-medium text-gray-300" id="current-time"></div>
+        </div>
+    </header>
+
+    <!-- Main Dashboard -->
+    <main class="container mx-auto p-6 space-y-6">
+        <!-- Top Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- APOD Card -->
+            <div class="card rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-gray-100">Astronomy Picture of the Day</h2>
+                <div id="apod-container" class="space-y-4">
+                    <div class="relative h-48 rounded-lg overflow-hidden bg-gray-800/50">
+                        <div class="absolute inset-0 animate-pulse bg-gray-700/50"></div>
+                    </div>
+                    <p class="text-gray-400 text-sm animate-pulse bg-gray-700/50 h-4 rounded w-3/4"></p>
+                </div>
+            </div>
+
+            <!-- ISS Location -->
+            <div class="card rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-gray-100">ISS Location</h2>
+                <div id="iss-container" class="space-y-4">
+                    <div class="relative h-48 rounded-lg overflow-hidden iss-map">
+                        <div id="iss-marker" class="absolute w-3 h-3 bg-blue-500 rounded-full shadow-lg shadow-blue-500/50 transform -translate-x-1/2 -translate-y-1/2 float">
+                            <div class="absolute inset-0 bg-blue-400 rounded-full animate-ping"></div>
+                        </div>
+                    </div>
+                    <div id="iss-coordinates" class="text-gray-400 text-sm font-medium"></div>
+                </div>
+            </div>
+
+            <!-- Space Stats -->
+            <div class="card rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-gray-100">Space Stats</h2>
+                <div id="stats-container" class="space-y-4">
+                    <div class="flex justify-between items-center p-3 bg-gray-800/50 rounded-lg">
+                        <span class="text-gray-300">Astronauts in Space</span>
+                        <span id="astronaut-count" class="text-blue-400 font-medium">Loading...</span>
+                    </div>
+                    <div class="flex justify-between items-center p-3 bg-gray-800/50 rounded-lg">
+                        <span class="text-gray-300">Next ISS Pass</span>
+                        <span id="next-pass" class="text-blue-400 font-medium">Loading...</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Middle Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Mars Weather -->
+            <div class="card rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-gray-100">Mars Weather</h2>
+                <div id="mars-weather" class="grid grid-cols-2 gap-4">
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <div class="text-sm text-gray-400">Temperature</div>
+                        <div class="text-2xl font-bold text-orange-400">-63°C</div>
+                        <div class="text-xs text-gray-500">Average at Jezero Crater</div>
+                    </div>
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <div class="text-sm text-gray-400">Pressure</div>
+                        <div class="text-2xl font-bold text-purple-400">715 Pa</div>
+                        <div class="text-xs text-gray-500">Surface Atmospheric</div>
+                    </div>
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <div class="text-sm text-gray-400">Wind Speed</div>
+                        <div class="text-2xl font-bold text-teal-400">7.2 m/s</div>
+                        <div class="text-xs text-gray-500">Current</div>
+                    </div>
+                    <div class="p-4 bg-gray-800/50 rounded-lg">
+                        <div class="text-sm text-gray-400">Season</div>
+                        <div class="text-2xl font-bold text-pink-400">Winter</div>
+                        <div class="text-xs text-gray-500">Northern Hemisphere</div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Near Earth Objects -->
+            <div class="card rounded-xl p-6 shadow-lg">
+                <h2 class="text-xl font-bold mb-4 text-gray-100">Near Earth Objects</h2>
+                <div id="neo-container" class="space-y-4">
+                    <!-- NEO items will be populated here -->
+                </div>
+            </div>
+        </div>
+
+        <!-- Launch Schedule -->
+        <div class="card rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-gray-100">Upcoming Launches</h2>
+            <div id="launches-container" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Launch items will be populated here -->
+            </div>
+        </div>
+
+        <!-- 3D Earth Visualization -->
+        <div class="earth-card rounded-xl p-6 shadow-lg">
+            <h2 class="text-xl font-bold mb-4 text-gray-100">Earth Visualization</h2>
+            <div id="earth-container" class="h-96 rounded-lg overflow-hidden bg-black/20"></div>
+        </div>
+    </main>
+
+    <script>
+        // Update current time
+        function updateTime() {
+            const timeElement = document.getElementById('current-time');
+            timeElement.textContent = new Date().toLocaleString();
+        }
+        setInterval(updateTime, 1000);
+        updateTime();
+
+        // Fetch APOD
+        async function fetchAPOD() {
+            try {
+                const response = await fetch('https://api.nasa.gov/planetary/apod?api_key=Vc3ckdYH08QSvWWBuOVQNEQygaILfurUBGvaLCWW');
+                const data = await response.json();
+                const container = document.getElementById('apod-container');
+                container.innerHTML = `
+                    <div class="relative h-48 rounded-lg overflow-hidden">
+                        <img src="${data.url}" alt="${data.title}" class="w-full h-full object-cover">
+                    </div>
+                    <p class="text-gray-400 text-sm">${data.title}</p>
+                `;
+            } catch (error) {
+                console.error('Error fetching APOD:', error);
+            }
+        }
+        fetchAPOD();
+
+        // Track ISS
+        async function trackISS() {
+            try {
+                const response = await fetch('https://api.wheretheiss.at/v1/satellites/25544');
+                const data = await response.json();
+                const { latitude, longitude } = data;
+                
+                const marker = document.getElementById('iss-marker');
+                const coords = document.getElementById('iss-coordinates');
+                
+                const x = (parseFloat(longitude) + 180) / 360 * 100;
+                const y = (90 - parseFloat(latitude)) / 180 * 100;
+                
+                marker.style.left = `${x}%`;
+                marker.style.top = `${y}%`;
+                coords.textContent = `Lat: ${latitude.toFixed(4)}°, Long: ${longitude.toFixed(4)}°`;
+            } catch (error) {
+                console.error('Error tracking ISS:', error);
+            }
+        }
+        setInterval(trackISS, 5000);
+        trackISS();
+
+        // Fetch NEO data
+        async function fetchNEO() {
+            try {
+                const response = await fetch(`https://api.nasa.gov/neo/rest/v1/feed/today?api_key=Vc3ckdYH08QSvWWBuOVQNEQygaILfurUBGvaLCWW`);
+                const data = await response.json();
+                const container = document.getElementById('neo-container');
+                
+                const today = new Date().toISOString().split('T')[0];
+                const neos = data.near_earth_objects[today].slice(0, 3);
+                
+                container.innerHTML = neos.map(neo => {
+                    const distance = Math.round(neo.close_approach_data[0].miss_distance.lunar);
+                    const diameter = Math.round(neo.estimated_diameter.meters.estimated_diameter_max);
+                    const dangerClass = neo.is_potentially_hazardous_asteroid ? 'neo-danger-high' : 'neo-danger-low';
+                    
+                    return `
+                        <div class="p-4 rounded-lg ${dangerClass}">
+                            <div class="flex justify-between items-start">
+                                <div>
+                                    <h3 class="font-bold text-gray-100">${neo.name.replace('(', '').replace(')', '')}</h3>
+                                    <p class="text-sm text-gray-400">Distance: ${distance} lunar distances</p>
+                                    <p class="text-sm text-gray-400">Diameter: ${diameter}m</p>
+                                </div>
+                                <div class="text-sm px-2 py-1 rounded ${neo.is_potentially_hazardous_asteroid ? 'bg-red-500/20 text-red-300' : 'bg-green-500/20 text-green-300'}">
+                                    ${neo.is_potentially_hazardous_asteroid ? 'Hazardous' : 'Safe'}
+                                </div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error fetching NEO data:', error);
+            }
+        }
+        fetchNEO();
+
+        // Fetch Launch Schedule
+        async function fetchLaunches() {
+            try {
+                const container = document.getElementById('launches-container');
+                // Simulated launch data (replace with actual API when available)
+                const launches = [
+                    {
+                        mission: 'Starlink 4-37',
+                        date: '2025-02-20T15:30:00Z',
+                        rocket: 'Falcon 9',
+                        location: 'Kennedy Space Center'
+                    },
+                    {
+                        mission: 'Artemis II',
+                        date: '2025-03-15T18:00:00Z',
+                        rocket: 'SLS',
+                        location: 'Kennedy Space Center'
+                    },
+                    {
+                        mission: 'Mars Sample Return',
+                        date: '2025-04-01T12:00:00Z',
+                        rocket: 'Atlas V',
+                        location: 'Cape Canaveral'
+                    }
+                ];
+
+                container.innerHTML = launches.map(launch => {
+                    const launchDate = new Date(launch.date);
+                    const timeUntil = Math.max(0, Math.floor((launchDate - new Date()) / 1000));
+                    
+                    return `
+                        <div class="p-4 bg-gray-800/50 rounded-lg">
+                            <h3 class="font-bold text-gray-100">${launch.mission}</h3>
+                            <p class="text-sm text-gray-400">${launch.rocket}</p>
+                            <p class="text-sm text-gray-400">${launch.location}</p>
+                            <p class="text-sm text-blue-400 mt-2">${launchDate.toLocaleDateString()}</p>
+                        </div>
+                    `;
+                }).join('');
+            } catch (error) {
+                console.error('Error fetching launches:', error);
+            }
+        }
+        fetchLaunches();
+
+        // Fetch astronaut count
+        async function fetchAstronauts() {
+            try {
+                const response = await fetch('https://www.howmanypeopleareinspacerightnow.com/peopleinspace.json');
+                const data = await response.json();
+                document.getElementById('astronaut-count').textContent = data.number;
+            } catch (error) {
+                console.error('Error fetching astronaut count:', error);
+                document.getElementById('astronaut-count').textContent = 'Unavailable';
+            }
+        }
+        fetchAstronauts();
+
+        // Initialize 3D Earth
+        function initEarth() {
+            const container = document.getElementById('earth-container');
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(75, container.clientWidth / container.clientHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            
+            renderer.setSize(container.clientWidth, container.clientHeight);
+            container.appendChild(renderer.domElement);
+
+            // Create Earth
+            const geometry = new THREE.SphereGeometry(5, 64, 64);
+            const material = new THREE.MeshPhongMaterial({
+                color: 0x2233ff,
+                shininess: 0.5,
+                emissive: 0x112244,
+                emissiveIntensity: 0.2
+            });
+            const earth = new THREE.Mesh(geometry, material);
+            scene.add(earth);
+
+            // Add atmosphere glow
+            const atmosphereGeometry = new THREE.SphereGeometry(5.2, 64, 64);
+            const atmosphereMaterial = new THREE.MeshPhongMaterial({
+                color: 0x0033ff,
+                transparent: true,
+                opacity: 0.2
+            });
+            const atmosphere = new THREE.Mesh(atmosphereGeometry, atmosphereMaterial);
+            scene.add(atmosphere);
+
+            // Add lighting
+            const light = new THREE.PointLight(0xffffff, 2);
+            light.position.set(10, 10, 10);
+            scene.add(light);
+            scene.add(new THREE.AmbientLight(0x333333));
+
+            camera.position.z = 15;
+
+            // Add stars
+            const starGeometry = new THREE.BufferGeometry();
+            const starMaterial = new THREE.PointsMaterial({
+                color: 0xffffff,
+                size: 0.1
+            });
+
+            const starVertices = [];
+            for (let i = 0; i < 10000; i++) {
+                const x = (Math.random() - 0.5) * 2000;
+                const y = (Math.random() - 0.5) * 2000;
+                const z = (Math.random() - 0.5) * 2000;
+                starVertices.push(x, y, z);
+            }
+
+            starGeometry.setAttribute('position', new THREE.Float32BufferAttribute(starVertices, 3));
+            const stars = new THREE.Points(starGeometry, starMaterial);
+            scene.add(stars);
+
+            // Animation loop
+            function animate() {
+                requestAnimationFrame(animate);
+                earth.rotation.y += 0.002;
+                atmosphere.rotation.y += 0.002;
+                stars.rotation.y += 0.0002;
+                renderer.render(scene, camera);
+            }
+            animate();
+
+            // Handle window resize
+            window.addEventListener('resize', () => {
+                camera.aspect = container.clientWidth / container.clientHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(container.clientWidth, container.clientHeight);
+            });
+
+            // Add mouse interaction
+            let isDragging = false;
+            let previousMousePosition = {
+                x: 0,
+                y: 0
+            };
+
+            container.addEventListener('mousedown', (e) => {
+                isDragging = true;
+            });
+
+            container.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const deltaMove = {
+                        x: e.offsetX - previousMousePosition.x,
+                        y: e.offsetY - previousMousePosition.y
+                    };
+
+                    earth.rotation.y += deltaMove.x * 0.005;
+                    earth.rotation.x += deltaMove.y * 0.005;
+                    atmosphere.rotation.y = earth.rotation.y;
+                    atmosphere.rotation.x = earth.rotation.x;
+                }
+
+                previousMousePosition = {
+                    x: e.offsetX,
+                    y: e.offsetY
+                };
+            });
+
+            container.addEventListener('mouseup', (e) => {
+                isDragging = false;
+            });
+
+            // Add touch interaction
+            container.addEventListener('touchstart', (e) => {
+                isDragging = true;
+                previousMousePosition = {
+                    x: e.touches[0].clientX,
+                    y: e.touches[0].clientY
+                };
+            });
+
+            container.addEventListener('touchmove', (e) => {
+                if (isDragging) {
+                    const deltaMove = {
+                        x: e.touches[0].clientX - previousMousePosition.x,
+                        y: e.touches[0].clientY - previousMousePosition.y
+                    };
+
+                    earth.rotation.y += deltaMove.x * 0.005;
+                    earth.rotation.x += deltaMove.y * 0.005;
+                    atmosphere.rotation.y = earth.rotation.y;
+                    atmosphere.rotation.x = earth.rotation.x;
+
+                    previousMousePosition = {
+                        x: e.touches[0].clientX,
+                        y: e.touches[0].clientY
+                    };
+                }
+            });
+
+            container.addEventListener('touchend', (e) => {
+                isDragging = false;
+            });
+        }
+        initEarth();
+
+        // Simulate next ISS pass (since the actual API requires location)
+        function updateNextPass() {
+            const now = new Date();
+            const nextPass = new Date(now.getTime() + Math.random() * 90 * 60000); // Random time within 90 minutes
+            document.getElementById('next-pass').textContent = nextPass.toLocaleTimeString();
+        }
+        updateNextPass();
+        setInterval(updateNextPass, 300000); // Update every 5 minutes
+    </script>
+</body>
+</html>
